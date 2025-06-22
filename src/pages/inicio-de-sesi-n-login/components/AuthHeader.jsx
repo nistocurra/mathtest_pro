@@ -13,10 +13,10 @@ const AuthHeader = () => {
             </div>
             <div className="text-center sm:text-left">
               <h1 className="text-2xl font-bold text-text-primary">
-                MathTest Pro
+                MathPractice Pro
               </h1>
               <p className="text-sm text-text-secondary hidden sm:block">
-                Sistema de Evaluación Matemática
+                Pon en práctica tus Matemáticas
               </p>
             </div>
           </Link>

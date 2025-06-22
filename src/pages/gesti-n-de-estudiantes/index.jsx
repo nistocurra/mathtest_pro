@@ -1,7 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import RoleBasedHeader from 'components/ui/RoleBasedHeader';
 import BreadcrumbNavigation from 'components/ui/BreadcrumbNavigation';
 import Icon from 'components/AppIcon';
+import { useAuth } from 'context/AuthContext';
+import studentService from 'services/studentService';
+import groupService from 'services/groupService';
 
 import StudentCard from './components/StudentCard';
 import StudentTable from './components/StudentTable';
@@ -10,7 +13,7 @@ import ImportStudentsModal from './components/ImportStudentsModal';
 import StudentProfileModal from './components/StudentProfileModal';
 
 const StudentManagement = () => {
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'table'
+  const [viewMode, setViewMode] = useState('table'); // Default to table view
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'inactive'
   const [activityFilter, setActivityFilter] = useState('all'); // 'all', 'recent', 'inactive'
@@ -20,104 +23,49 @@ const StudentManagement = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [students, setStudents] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { userProfile, updateLastAccess } = useAuth();
 
-  // Mock data for students
-  const mockStudents = [
-    {
-      id: 1,
-      name: "Ana García López",
-      email: "ana.garcia@estudiante.edu",
-      avatar: "https://randomuser.me/api/portraits/women/1.jpg",
-      status: "active",
-      lastAccess: new Date(Date.now() - 86400000), // 1 day ago
-      completedExams: 8,
-      totalExams: 12,
-      averageScore: 85.5,
-      registrationDate: new Date(2024, 0, 15),
-      phone: "+34 612 345 678",
-      grade: "10º Grado"
-    },
-    {
-      id: 2,
-      name: "Carlos Rodríguez Martín",
-      email: "carlos.rodriguez@estudiante.edu",
-      avatar: "https://randomuser.me/api/portraits/men/2.jpg",
-      status: "active",
-      lastAccess: new Date(Date.now() - 172800000), // 2 days ago
-      completedExams: 15,
-      totalExams: 18,
-      averageScore: 92.3,
-      registrationDate: new Date(2024, 0, 10),
-      phone: "+34 623 456 789",
-      grade: "11º Grado"
-    },
-    {
-      id: 3,
-      name: "María Fernández Silva",
-      email: "maria.fernandez@estudiante.edu",
-      avatar: "https://randomuser.me/api/portraits/women/3.jpg",
-      status: "active",
-      lastAccess: new Date(Date.now() - 3600000), // 1 hour ago
-      completedExams: 6,
-      totalExams: 10,
-      averageScore: 78.2,
-      registrationDate: new Date(2024, 1, 5),
-      phone: "+34 634 567 890",
-      grade: "9º Grado"
-    },
-    {
-      id: 4,
-      name: "David González Ruiz",
-      email: "david.gonzalez@estudiante.edu",
-      avatar: "https://randomuser.me/api/portraits/men/4.jpg",
-      status: "inactive",
-      lastAccess: new Date(Date.now() - 1209600000), // 2 weeks ago
-      completedExams: 3,
-      totalExams: 8,
-      averageScore: 65.8,
-      registrationDate: new Date(2023, 11, 20),
-      phone: "+34 645 678 901",
-      grade: "10º Grado"
-    },
-    {
-      id: 5,
-      name: "Laura Martínez Pérez",
-      email: "laura.martinez@estudiante.edu",
-      avatar: "https://randomuser.me/api/portraits/women/5.jpg",
-      status: "active",
-      lastAccess: new Date(Date.now() - 7200000), // 2 hours ago
-      completedExams: 12,
-      totalExams: 14,
-      averageScore: 88.7,
-      registrationDate: new Date(2024, 1, 12),
-      phone: "+34 656 789 012",
-      grade: "11º Grado"
-    },
-    {
-      id: 6,
-      name: "Javier López Torres",
-      email: "javier.lopez@estudiante.edu",
-      avatar: "https://randomuser.me/api/portraits/men/6.jpg",
-      status: "active",
-      lastAccess: new Date(Date.now() - 259200000), // 3 days ago
-      completedExams: 9,
-      totalExams: 11,
-      averageScore: 81.4,
-      registrationDate: new Date(2024, 0, 25),
-      phone: "+34 667 890 123",
-      grade: "10º Grado"
-    }
-  ];
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        updateLastAccess();
+        
+        const [studentsData, groupsData] = await Promise.all([
+          studentService.getStudents(),
+          groupService.getGroups()
+        ]);
+        
+        setStudents(studentsData);
+        setGroups(groupsData);
+      } catch (err) {
+        setError('Error al cargar los datos');
+        console.log('Error loading student data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [updateLastAccess]);
 
   // Filter and sort students
   const filteredAndSortedStudents = useMemo(() => {
-    let filtered = mockStudents.filter(student => {
-      const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           student.email.toLowerCase().includes(searchTerm.toLowerCase());
+    let filtered = students.filter(student => {
+      const matchesSearch = student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           student.alias?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
+      // Note: We don't have a direct status field, so we'll use a different approach
+      const matchesStatus = statusFilter === 'all'; // For now, show all students
       
-      const daysSinceLastAccess = (Date.now() - student.lastAccess.getTime()) / (1000 * 60 * 60 * 24);
+      const daysSinceLastAccess = student.last_access ? 
+        (Date.now() - new Date(student.last_access).getTime()) / (1000 * 60 * 60 * 24) : 
+        999; // Default to high number if no last access
       const matchesActivity = activityFilter === 'all' ||
                              (activityFilter === 'recent' && daysSinceLastAccess <= 7) ||
                              (activityFilter === 'inactive' && daysSinceLastAccess > 7);
@@ -130,9 +78,12 @@ const StudentManagement = () => {
       let aValue = a[sortConfig.key];
       let bValue = b[sortConfig.key];
       
-      if (sortConfig.key === 'lastAccess') {
-        aValue = aValue.getTime();
-        bValue = bValue.getTime();
+      if (sortConfig.key === 'name') {
+        aValue = a.full_name || '';
+        bValue = b.full_name || '';
+      } else if (sortConfig.key === 'lastAccess') {
+        aValue = a.last_access ? new Date(a.last_access).getTime() : 0;
+        bValue = b.last_access ? new Date(b.last_access).getTime() : 0;
       }
       
       if (aValue < bValue) {
@@ -145,7 +96,7 @@ const StudentManagement = () => {
     });
 
     return filtered;
-  }, [mockStudents, searchTerm, statusFilter, activityFilter, sortConfig]);
+  }, [students, searchTerm, statusFilter, activityFilter, sortConfig]);
 
   const handleSort = (key) => {
     setSortConfig(prevConfig => ({
@@ -180,13 +131,20 @@ const StudentManagement = () => {
     setShowAddModal(true);
   };
 
-  const handleResetPassword = (student) => {
-    alert(`Contraseña restablecida para ${student.name}. Nueva contraseña temporal enviada por email.`);
+  const handleResetPassword = async (student) => {
+    try {
+      const newPassword = 'NuevaContraseña123'; // Generate a proper password
+      await studentService.resetStudentPassword(student.id, newPassword);
+      alert(`Contraseña restablecida para ${student.full_name}. Nueva contraseña: ${newPassword}`);
+    } catch (err) {
+      setError('Error al restablecer la contraseña');
+      console.log('Error resetting password:', err);
+    }
   };
 
   const handleToggleStatus = (student) => {
-    const newStatus = student.status === 'active' ? 'inactive' : 'active';
-    alert(`Estado de ${student.name} cambiado a ${newStatus === 'active' ? 'activo' : 'inactivo'}.`);
+    // This would require implementing a status field in the database
+    alert(`Funcionalidad de cambio de estado pendiente de implementar para ${student.full_name}.`);
   };
 
   const handleBulkAction = (action) => {
@@ -216,8 +174,10 @@ const StudentManagement = () => {
   };
 
   const getActivityFilterCount = (filter) => {
-    return mockStudents.filter(student => {
-      const daysSinceLastAccess = (Date.now() - student.lastAccess.getTime()) / (1000 * 60 * 60 * 24);
+    return students.filter(student => {
+      const daysSinceLastAccess = student.last_access ? 
+        (Date.now() - new Date(student.last_access).getTime()) / (1000 * 60 * 60 * 24) : 
+        999;
       switch (filter) {
         case 'recent':
           return daysSinceLastAccess <= 7;
@@ -229,13 +189,63 @@ const StudentManagement = () => {
     }).length;
   };
 
+  // Transform students data for components
+  const transformedStudents = filteredAndSortedStudents.map(student => ({
+    id: student.id,
+    name: student.full_name || 'Estudiante',
+    email: `${student.alias || 'estudiante'}@student.local`, // Constructed email
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.full_name || 'E')}&background=random`,
+    status: 'active', // Default status
+    lastAccess: student.last_access ? new Date(student.last_access) : new Date(),
+    completedExams: 0, // Would come from practice_attempts
+    totalExams: 0, // Would come from available practices
+    averageScore: 0, // Would be calculated from attempts
+    registrationDate: new Date(student.created_at),
+    phone: 'N/A', // Not stored for privacy
+    grade: student.grade_level || 'Sin asignar',
+    alias: student.alias,
+    totalPoints: student.total_points || 0,
+    group: student.group
+  }));
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <RoleBasedHeader userRole="teacher" userName={userProfile?.full_name || 'Profesor'} />
+        <div className="pt-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center justify-center h-64">
+              <div className="flex items-center space-x-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <span className="text-text-secondary">Cargando estudiantes...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <RoleBasedHeader userRole="teacher" userName="Prof. García" />
+      <RoleBasedHeader userRole="teacher" userName={userProfile?.full_name || 'Profesor'} />
       
       <div className="pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <BreadcrumbNavigation />
+          
+          {/* Privacy Notice */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <Icon name="Info" size={20} className="text-blue-600 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-1">Nota informativa</h4>
+                <p className="text-blue-800 text-sm">
+                  La dirección de correo electrónico de los alumnos no puede ser almacenada por el sistema ya que vulneraría posibles leyes de protección de datos del menor.
+                </p>
+              </div>
+            </div>
+          </div>
           
           {/* Header Section */}
           <div className="mb-8">
@@ -267,6 +277,22 @@ const StudentManagement = () => {
             </div>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <Icon name="AlertCircle" size={20} className="text-red-600" />
+                <span className="text-red-800">{error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  className="ml-auto text-red-600 hover:text-red-800"
+                >
+                  <Icon name="X" size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="card">
@@ -276,7 +302,7 @@ const StudentManagement = () => {
                 </div>
                 <div>
                   <p className="text-sm text-text-secondary">Total Estudiantes</p>
-                  <p className="text-2xl font-semibold text-text-primary">{mockStudents.length}</p>
+                  <p className="text-2xl font-semibold text-text-primary">{students.length}</p>
                 </div>
               </div>
             </div>
@@ -289,7 +315,7 @@ const StudentManagement = () => {
                 <div>
                   <p className="text-sm text-text-secondary">Activos</p>
                   <p className="text-2xl font-semibold text-text-primary">
-                    {mockStudents.filter(s => s.status === 'active').length}
+                    {students.length} {/* All students are considered active for now */}
                   </p>
                 </div>
               </div>
@@ -315,9 +341,9 @@ const StudentManagement = () => {
                   <Icon name="Clock" size={20} className="text-warning" />
                 </div>
                 <div>
-                  <p className="text-sm text-text-secondary">Promedio Exámenes</p>
+                  <p className="text-sm text-text-secondary">Promedio Puntos</p>
                   <p className="text-2xl font-semibold text-text-primary">
-                    {Math.round(mockStudents.reduce((acc, s) => acc + s.completedExams, 0) / mockStudents.length)}
+                    {students.length > 0 ? Math.round(students.reduce((acc, s) => acc + (s.total_points || 0), 0) / students.length) : 0}
                   </p>
                 </div>
               </div>
@@ -333,7 +359,7 @@ const StudentManagement = () => {
                   <Icon name="Search" size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary" />
                   <input
                     type="text"
-                    placeholder="Buscar por nombre o email..."
+                    placeholder="Buscar por nombre o alias..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="input-field pl-10"
@@ -434,7 +460,7 @@ const StudentManagement = () => {
           {/* Results Count */}
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-text-secondary">
-              Mostrando {filteredAndSortedStudents.length} de {mockStudents.length} estudiantes
+              Mostrando {filteredAndSortedStudents.length} de {students.length} estudiantes
             </p>
             
             {viewMode === 'table' && (
@@ -450,7 +476,7 @@ const StudentManagement = () => {
           {/* Students Display */}
           {viewMode === 'cards' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredAndSortedStudents.map(student => (
+              {transformedStudents.map(student => (
                 <StudentCard
                   key={student.id}
                   student={student}
@@ -463,7 +489,7 @@ const StudentManagement = () => {
             </div>
           ) : (
             <StudentTable
-              students={filteredAndSortedStudents}
+              students={transformedStudents}
               selectedStudents={selectedStudents}
               onStudentSelect={handleStudentSelect}
               onSelectAll={handleSelectAll}
@@ -486,7 +512,8 @@ const StudentManagement = () => {
                 No se encontraron estudiantes
               </h3>
               <p className="text-text-secondary mb-4">
-                {searchTerm || statusFilter !== 'all' || activityFilter !== 'all' ?'Intenta ajustar los filtros de búsqueda.' :'Comienza agregando tu primer estudiante.'}
+                {searchTerm || statusFilter !== 'all' || activityFilter !== 'all' ? 'Intenta ajustar los filtros de búsqueda.': 'Comienza agregando tu primer estudiante.'
+                }
               </p>
               {(!searchTerm && statusFilter === 'all' && activityFilter === 'all') && (
                 <button
@@ -510,6 +537,12 @@ const StudentManagement = () => {
           setSelectedStudent(null);
         }}
         student={selectedStudent}
+        groups={groups}
+        onStudentCreated={(newStudent) => {
+          setStudents(prev => [newStudent, ...prev]);
+          setShowAddModal(false);
+          setSelectedStudent(null);
+        }}
       />
 
       <ImportStudentsModal

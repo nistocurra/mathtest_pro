@@ -2,14 +2,8 @@ import React from 'react';
 import Icon from 'components/AppIcon';
 
 const ProgressOverview = ({ studentData }) => {
-  // Mock progress data
+  // Mock progress data - removed subject breakdown as requested
   const progressData = {
-    subjects: [
-      { name: 'Álgebra', score: 92, color: 'bg-primary', textColor: 'text-primary' },
-      { name: 'Geometría', score: 85, color: 'bg-accent', textColor: 'text-accent' },
-      { name: 'Cálculo', score: 78, color: 'bg-warning', textColor: 'text-warning-600' },
-      { name: 'Estadística', score: 90, color: 'bg-secondary-600', textColor: 'text-secondary-600' }
-    ],
     weeklyProgress: [
       { week: 'Sem 1', score: 82 },
       { week: 'Sem 2', score: 85 },
@@ -18,20 +12,6 @@ const ProgressOverview = ({ studentData }) => {
     ],
     totalStudyTime: 45, // hours
     completionRate: (studentData.completedExams / studentData.totalExams) * 100
-  };
-
-  const getScoreColor = (score) => {
-    if (score >= 90) return 'text-success';
-    if (score >= 80) return 'text-warning-600';
-    if (score >= 70) return 'text-warning';
-    return 'text-error';
-  };
-
-  const getScoreBackground = (score) => {
-    if (score >= 90) return 'bg-success-50';
-    if (score >= 80) return 'bg-warning-50';
-    if (score >= 70) return 'bg-warning-50';
-    return 'bg-error-50';
   };
 
   // Calculate circumference for circular progress
@@ -84,35 +64,9 @@ const ProgressOverview = ({ studentData }) => {
           <div className="text-center">
             <h4 className="text-lg font-semibold text-text-primary mb-1">Promedio General</h4>
             <p className="text-sm text-text-secondary">
-              {studentData.completedExams} de {studentData.totalExams} exámenes completados
+              {studentData.completedExams} de {studentData.totalExams} prácticas completadas
             </p>
           </div>
-        </div>
-      </div>
-
-      {/* Subject Breakdown */}
-      <div className="bg-surface rounded-lg border border-border p-6">
-        <h4 className="text-lg font-semibold text-text-primary mb-4">Por Materia</h4>
-        <div className="space-y-4">
-          {progressData.subjects.map((subject, index) => (
-            <div key={index} className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className={`w-3 h-3 rounded-full ${subject.color}`}></div>
-                <span className="text-sm font-medium text-text-primary">{subject.name}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-16 bg-secondary-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all duration-500 ease-out ${subject.color}`}
-                    style={{ width: `${subject.score}%` }}
-                  ></div>
-                </div>
-                <span className={`text-sm font-semibold ${getScoreColor(subject.score)} min-w-[3rem] text-right`}>
-                  {subject.score}%
-                </span>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -133,7 +87,7 @@ const ProgressOverview = ({ studentData }) => {
             <span className="text-sm text-text-secondary">Tasa de Finalización</span>
           </div>
           <div className="text-xl font-bold text-text-primary">{Math.round(progressData.completionRate)}%</div>
-          <div className="text-xs text-text-secondary">Exámenes completados</div>
+          <div className="text-xs text-text-secondary">Prácticas completadas</div>
         </div>
       </div>
 
@@ -165,7 +119,7 @@ const ProgressOverview = ({ studentData }) => {
               ¡Excelente progreso!
             </h4>
             <p className="text-sm text-accent-600">
-              Has mejorado un 6% en las últimas 4 semanas. Continúa así para alcanzar tus objetivos.
+              Has mejorado un 6% en las últimas 4 semanas. Continúa así para alcanzar tus objetivos en Matemáticas.
             </p>
           </div>
         </div>

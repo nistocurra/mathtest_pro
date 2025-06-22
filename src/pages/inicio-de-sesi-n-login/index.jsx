@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Icon from 'components/AppIcon';
 import LoginForm from './components/LoginForm';
 import AuthHeader from './components/AuthHeader';
@@ -49,7 +49,7 @@ const Login = () => {
       }
 
       // Invalid credentials
-      setError('Credenciales incorrectas. Verifica tu email y contraseña.');
+      setError('Credenciales incorrectas. Verifica tu alias y contraseña.');
     } catch (err) {
       setError('Error de conexión. Inténtalo de nuevo.');
     } finally {
@@ -82,35 +82,6 @@ const Login = () => {
               isLoading={isLoading}
               error={error}
             />
-
-            {/* Divider */}
-            <div className="my-6 flex items-center">
-              <div className="flex-1 border-t border-border"></div>
-              <span className="px-4 text-sm text-text-secondary">o</span>
-              <div className="flex-1 border-t border-border"></div>
-            </div>
-
-            {/* Additional Actions */}
-            <div className="space-y-4">
-              <Link
-                to="/inicio-de-sesi-n-login"
-                className="block text-center text-sm text-primary hover:text-primary-700 transition-colors duration-200 ease-in-out"
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
-              
-              <div className="text-center">
-                <span className="text-sm text-text-secondary">
-                  ¿No tienes cuenta?{' '}
-                </span>
-                <Link
-                  to="/inicio-de-sesi-n-login"
-                  className="text-sm text-primary hover:text-primary-700 font-medium transition-colors duration-200 ease-in-out"
-                >
-                  Crear cuenta nueva
-                </Link>
-              </div>
-            </div>
           </div>
 
           {/* Demo Credentials */}
@@ -139,7 +110,7 @@ const Login = () => {
       <footer className="py-6 px-4 border-t border-border bg-surface">
         <div className="max-w-md mx-auto text-center">
           <p className="text-sm text-text-secondary">
-            © {new Date().getFullYear()} MathTest Pro. Todos los derechos reservados.
+            © {new Date().getFullYear()} MathPractice Pro. Todos los derechos reservados.
           </p>
         </div>
       </footer>

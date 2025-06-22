@@ -3,237 +3,219 @@ import React, { useState, useEffect } from 'react';
 import Icon from 'components/AppIcon';
 import RoleBasedHeader from 'components/ui/RoleBasedHeader';
 import BreadcrumbNavigation from 'components/ui/BreadcrumbNavigation';
+import { useAuth } from 'context/AuthContext';
+import practiceService from 'services/practiceService';
 import ExamCard from './components/ExamCard';
 import ExamTable from './components/ExamTable';
 import CreateExamModal from './components/CreateExamModal';
 import FilterBar from './components/FilterBar';
 import BulkActions from './components/BulkActions';
 
-const ExamManagement = () => {
-  const [exams, setExams] = useState([]);
-  const [filteredExams, setFilteredExams] = useState([]);
+const PracticeManagement = () => {
+  const [practices, setPractices] = useState([]);
+  const [filteredPractices, setFilteredPractices] = useState([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'table'
-  const [selectedExams, setSelectedExams] = useState([]);
+  const [viewMode, setViewMode] = useState('table'); // Default to table view
+  const [selectedPractices, setSelectedPractices] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState('date');
   const [isLoading, setIsLoading] = useState(true);
-
-  // Mock data for exams
-  const mockExams = [
-    {
-      id: 1,
-      title: "Álgebra Básica - Ecuaciones Lineales",
-      description: "Examen sobre resolución de ecuaciones lineales de primer grado y sistemas de ecuaciones.",
-      createdDate: new Date('2024-01-15'),
-      status: 'active',
-      questionsCount: 25,
-      attemptsAllowed: 'multiple',
-      maxAttempts: 3,
-      timeLimit: 60,
-      studentsCompleted: 18,
-      averageScore: 78.5,
-      lastModified: new Date('2024-01-20')
-    },
-    {
-      id: 2,
-      title: "Geometría - Triángulos y Cuadriláteros",
-      description: "Evaluación de conceptos fundamentales sobre propiedades de triángulos y cuadriláteros.",
-      createdDate: new Date('2024-01-10'),
-      status: 'inactive',
-      questionsCount: 20,
-      attemptsAllowed: 'single',
-      maxAttempts: 1,
-      timeLimit: 45,
-      studentsCompleted: 0,
-      averageScore: 0,
-      lastModified: new Date('2024-01-12')
-    },
-    {
-      id: 3,
-      title: "Cálculo Diferencial - Límites",
-      description: "Examen avanzado sobre cálculo de límites y continuidad de funciones.",
-      createdDate: new Date('2024-01-08'),
-      status: 'active',
-      questionsCount: 30,
-      attemptsAllowed: 'multiple',
-      maxAttempts: 2,
-      timeLimit: 90,
-      studentsCompleted: 12,
-      averageScore: 82.3,
-      lastModified: new Date('2024-01-18')
-    },
-    {
-      id: 4,
-      title: "Estadística - Probabilidad Básica",
-      description: "Conceptos fundamentales de probabilidad y distribuciones estadísticas.",
-      createdDate: new Date('2024-01-05'),
-      status: 'active',
-      questionsCount: 15,
-      attemptsAllowed: 'single',
-      maxAttempts: 1,
-      timeLimit: 30,
-      studentsCompleted: 25,
-      averageScore: 75.8,
-      lastModified: new Date('2024-01-15')
-    },
-    {
-      id: 5,
-      title: "Trigonometría - Funciones Básicas",
-      description: "Evaluación sobre seno, coseno, tangente y sus aplicaciones.",
-      createdDate: new Date('2024-01-03'),
-      status: 'inactive',
-      questionsCount: 22,
-      attemptsAllowed: 'multiple',
-      maxAttempts: 3,
-      timeLimit: 50,
-      studentsCompleted: 8,
-      averageScore: 68.2,
-      lastModified: new Date('2024-01-10')
-    }
-  ];
+  const [error, setError] = useState(null);
+  const { userProfile, updateLastAccess } = useAuth();
 
   useEffect(() => {
-    // Simulate loading
-    const loadExams = async () => {
-      setIsLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setExams(mockExams);
-      setFilteredExams(mockExams);
-      setIsLoading(false);
+    const loadPractices = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        updateLastAccess();
+        
+        const data = await practiceService.getPractices();
+        setPractices(data);
+        setFilteredPractices(data);
+      } catch (err) {
+        setError('Error al cargar las prácticas');
+        console.log('Error loading practices:', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    loadExams();
-  }, []);
+    loadPractices();
+  }, [updateLastAccess]);
 
   useEffect(() => {
-    let filtered = [...exams];
+    let filtered = [...practices];
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(exam =>
-        exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.description.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(practice =>
+        practice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        practice.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Apply status filter
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(exam => exam.status === filterStatus);
+      const isActive = filterStatus === 'active';
+      filtered = filtered.filter(practice => practice.is_active === isActive);
     }
 
     // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'date':
-          return new Date(b.createdDate) - new Date(a.createdDate);
+          return new Date(b.created_at) - new Date(a.created_at);
         case 'name':
           return a.title.localeCompare(b.title);
         case 'status':
-          return a.status.localeCompare(b.status);
+          return (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0);
         case 'questions':
-          return b.questionsCount - a.questionsCount;
+          const aQuestions = Array.isArray(a.questions) ? a.questions.length : 0;
+          const bQuestions = Array.isArray(b.questions) ? b.questions.length : 0;
+          return bQuestions - aQuestions;
         default:
           return 0;
       }
     });
 
-    setFilteredExams(filtered);
-  }, [exams, searchTerm, filterStatus, sortBy]);
+    setFilteredPractices(filtered);
+  }, [practices, searchTerm, filterStatus, sortBy]);
 
-  const handleToggleStatus = (examId) => {
-    setExams(prevExams =>
-      prevExams.map(exam =>
-        exam.id === examId
-          ? { ...exam, status: exam.status === 'active' ? 'inactive' : 'active' }
-          : exam
-      )
-    );
-  };
+  const handleToggleStatus = async (practiceId) => {
+    try {
+      const practice = practices.find(p => p.id === practiceId);
+      if (!practice) return;
 
-  const handleDeleteExam = (examId) => {
-    if (window.confirm('¿Estás seguro de que deseas eliminar este examen? Esta acción no se puede deshacer.')) {
-      setExams(prevExams => prevExams.filter(exam => exam.id !== examId));
-      setSelectedExams(prevSelected => prevSelected.filter(id => id !== examId));
+      const updatedPractice = await practiceService.togglePracticeStatus(practiceId, practice.is_active ? 'active' : 'inactive');
+      
+      setPractices(prevPractices =>
+        prevPractices.map(p =>
+          p.id === practiceId ? { ...p, is_active: updatedPractice.is_active } : p
+        )
+      );
+    } catch (err) {
+      setError('Error al cambiar el estado de la práctica');
+      console.log('Error toggling practice status:', err);
     }
   };
 
-  const handleDuplicateExam = (examId) => {
-    const examToDuplicate = exams.find(exam => exam.id === examId);
-    if (examToDuplicate) {
-      const newExam = {
-        ...examToDuplicate,
-        id: Math.max(...exams.map(e => e.id)) + 1,
-        title: `${examToDuplicate.title} (Copia)`,
-        createdDate: new Date(),
-        status: 'inactive',
-        studentsCompleted: 0,
-        averageScore: 0,
-        lastModified: new Date()
-      };
-      setExams(prevExams => [newExam, ...prevExams]);
+  const handleDeletePractice = async (practiceId) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar esta práctica? Esta acción no se puede deshacer.')) {
+      try {
+        await practiceService.deletePractice(practiceId);
+        setPractices(prevPractices => prevPractices.filter(practice => practice.id !== practiceId));
+        setSelectedPractices(prevSelected => prevSelected.filter(id => id !== practiceId));
+      } catch (err) {
+        setError('Error al eliminar la práctica');
+        console.log('Error deleting practice:', err);
+      }
     }
   };
 
-  const handleCreateExam = (examData) => {
-    const newExam = {
-      id: Math.max(...exams.map(e => e.id)) + 1,
-      ...examData,
-      createdDate: new Date(),
-      status: 'inactive',
-      studentsCompleted: 0,
-      averageScore: 0,
-      lastModified: new Date()
-    };
-    setExams(prevExams => [newExam, ...prevExams]);
-    setIsCreateModalOpen(false);
-  };
-
-  const handleBulkStatusChange = (status) => {
-    setExams(prevExams =>
-      prevExams.map(exam =>
-        selectedExams.includes(exam.id)
-          ? { ...exam, status }
-          : exam
-      )
-    );
-    setSelectedExams([]);
-  };
-
-  const handleBulkDelete = () => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar ${selectedExams.length} exámenes? Esta acción no se puede deshacer.`)) {
-      setExams(prevExams => prevExams.filter(exam => !selectedExams.includes(exam.id)));
-      setSelectedExams([]);
+  const handleDuplicatePractice = async (practiceId) => {
+    try {
+      const duplicatedPractice = await practiceService.duplicatePractice(practiceId);
+      setPractices(prevPractices => [duplicatedPractice, ...prevPractices]);
+    } catch (err) {
+      setError('Error al duplicar la práctica');
+      console.log('Error duplicating practice:', err);
     }
   };
 
-  const handleSelectExam = (examId) => {
-    setSelectedExams(prevSelected =>
-      prevSelected.includes(examId)
-        ? prevSelected.filter(id => id !== examId)
-        : [...prevSelected, examId]
+  const handleCreatePractice = async (practiceData) => {
+    try {
+      const newPractice = await practiceService.createPractice(practiceData);
+      setPractices(prevPractices => [newPractice, ...prevPractices]);
+      setIsCreateModalOpen(false);
+    } catch (err) {
+      setError('Error al crear la práctica');
+      console.log('Error creating practice:', err);
+    }
+  };
+
+  const handleBulkStatusChange = async (status) => {
+    try {
+      const isActive = status === 'active';
+      
+      // Update all selected practices
+      for (const practiceId of selectedPractices) {
+        await practiceService.togglePracticeStatus(practiceId, status);
+      }
+      
+      setPractices(prevPractices =>
+        prevPractices.map(practice =>
+          selectedPractices.includes(practice.id)
+            ? { ...practice, is_active: isActive }
+            : practice
+        )
+      );
+      setSelectedPractices([]);
+    } catch (err) {
+      setError('Error al cambiar el estado de las prácticas');
+      console.log('Error updating bulk status:', err);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (window.confirm(`¿Estás seguro de que deseas eliminar ${selectedPractices.length} prácticas? Esta acción no se puede deshacer.`)) {
+      try {
+        for (const practiceId of selectedPractices) {
+          await practiceService.deletePractice(practiceId);
+        }
+        
+        setPractices(prevPractices => prevPractices.filter(practice => !selectedPractices.includes(practice.id)));
+        setSelectedPractices([]);
+      } catch (err) {
+        setError('Error al eliminar las prácticas');
+        console.log('Error deleting practices:', err);
+      }
+    }
+  };
+
+  const handleSelectPractice = (practiceId) => {
+    setSelectedPractices(prevSelected =>
+      prevSelected.includes(practiceId)
+        ? prevSelected.filter(id => id !== practiceId)
+        : [...prevSelected, practiceId]
     );
   };
 
   const handleSelectAll = () => {
-    if (selectedExams.length === filteredExams.length) {
-      setSelectedExams([]);
+    if (selectedPractices.length === filteredPractices.length) {
+      setSelectedPractices([]);
     } else {
-      setSelectedExams(filteredExams.map(exam => exam.id));
+      setSelectedPractices(filteredPractices.map(practice => practice.id));
     }
   };
+
+  // Transform practices data for components
+  const transformedPractices = filteredPractices.map(practice => ({
+    id: practice.id,
+    title: practice.title,
+    description: practice.description || '',
+    createdDate: new Date(practice.created_at),
+    status: practice.is_active ? 'active' : 'inactive',
+    questionsCount: Array.isArray(practice.questions) ? practice.questions.length : 0,
+    attemptsAllowed: practice.attempts_allowed === 1 ? 'single' : 'multiple',
+    maxAttempts: practice.attempts_allowed,
+    timeLimit: practice.duration_minutes,
+    studentsCompleted: 0, // This would come from practice_attempts
+    averageScore: 0, // This would come from practice_attempts
+    lastModified: new Date(practice.updated_at)
+  }));
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <RoleBasedHeader userRole="teacher" userName="Prof. García" />
+        <RoleBasedHeader userRole="teacher" userName={userProfile?.full_name || 'Profesor'} />
         <div className="pt-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center justify-center h-64">
               <div className="flex items-center space-x-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <span className="text-text-secondary">Cargando exámenes...</span>
+                <span className="text-text-secondary">Cargando prácticas...</span>
               </div>
             </div>
           </div>
@@ -244,7 +226,7 @@ const ExamManagement = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <RoleBasedHeader userRole="teacher" userName="Prof. García" />
+      <RoleBasedHeader userRole="teacher" userName={userProfile?.full_name || 'Profesor'} />
       
       <div className="pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -255,7 +237,7 @@ const ExamManagement = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-text-primary mb-2">
-                  Gestión de Exámenes
+                  Gestión de Prácticas
                 </h1>
                 <p className="text-text-secondary">
                   Crea, modifica y administra tus evaluaciones matemáticas
@@ -283,17 +265,33 @@ const ExamManagement = () => {
                   </button>
                 </div>
 
-                {/* Create Exam Button */}
+                {/* Create Practice Button */}
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
                   className="btn-primary flex items-center space-x-2"
                 >
                   <Icon name="Plus" size={20} />
-                  <span className="hidden sm:inline">Crear Examen</span>
+                  <span className="hidden sm:inline">Crear Práctica</span>
                 </button>
               </div>
             </div>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <Icon name="AlertCircle" size={20} className="text-red-600" />
+                <span className="text-red-800">{error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  className="ml-auto text-red-600 hover:text-red-800"
+                >
+                  <Icon name="X" size={16} />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Filter Bar */}
           <FilterBar
@@ -303,31 +301,31 @@ const ExamManagement = () => {
             onFilterStatusChange={setFilterStatus}
             sortBy={sortBy}
             onSortChange={setSortBy}
-            totalExams={filteredExams.length}
+            totalExams={filteredPractices.length}
           />
 
           {/* Bulk Actions */}
-          {selectedExams.length > 0 && (
+          {selectedPractices.length > 0 && (
             <BulkActions
-              selectedCount={selectedExams.length}
+              selectedCount={selectedPractices.length}
               onActivateAll={() => handleBulkStatusChange('active')}
               onDeactivateAll={() => handleBulkStatusChange('inactive')}
               onDeleteAll={handleBulkDelete}
-              onClearSelection={() => setSelectedExams([])}
+              onClearSelection={() => setSelectedPractices([])}
             />
           )}
 
           {/* Content Area */}
-          {filteredExams.length === 0 ? (
+          {filteredPractices.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-24 h-24 bg-secondary-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Icon name="FileText" size={48} className="text-secondary-600" />
               </div>
               <h3 className="text-xl font-semibold text-text-primary mb-2">
-                {searchTerm || filterStatus !== 'all' ? 'No se encontraron exámenes' : 'No hay exámenes creados'}
+                {searchTerm || filterStatus !== 'all' ? 'No se encontraron prácticas' : 'No hay prácticas creadas'}
               </h3>
               <p className="text-text-secondary mb-6">
-                {searchTerm || filterStatus !== 'all' ?'Intenta ajustar los filtros de búsqueda' :'Comienza creando tu primer examen matemático'
+                {searchTerm || filterStatus !== 'all' ? 'Intenta ajustar los filtros de búsqueda': 'Comienza creando tu primera práctica matemática'
                 }
               </p>
               {!searchTerm && filterStatus === 'all' && (
@@ -335,7 +333,7 @@ const ExamManagement = () => {
                   onClick={() => setIsCreateModalOpen(true)}
                   className="btn-primary"
                 >
-                  Crear Primer Examen
+                  Crear Primera Práctica
                 </button>
               )}
             </div>
@@ -343,27 +341,27 @@ const ExamManagement = () => {
             <>
               {viewMode === 'cards' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredExams.map((exam) => (
+                  {transformedPractices.map((practice) => (
                     <ExamCard
-                      key={exam.id}
-                      exam={exam}
-                      isSelected={selectedExams.includes(exam.id)}
-                      onSelect={() => handleSelectExam(exam.id)}
-                      onToggleStatus={() => handleToggleStatus(exam.id)}
-                      onDelete={() => handleDeleteExam(exam.id)}
-                      onDuplicate={() => handleDuplicateExam(exam.id)}
+                      key={practice.id}
+                      exam={practice}
+                      isSelected={selectedPractices.includes(practice.id)}
+                      onSelect={() => handleSelectPractice(practice.id)}
+                      onToggleStatus={() => handleToggleStatus(practice.id)}
+                      onDelete={() => handleDeletePractice(practice.id)}
+                      onDuplicate={() => handleDuplicatePractice(practice.id)}
                     />
                   ))}
                 </div>
               ) : (
                 <ExamTable
-                  exams={filteredExams}
-                  selectedExams={selectedExams}
-                  onSelectExam={handleSelectExam}
+                  exams={transformedPractices}
+                  selectedExams={selectedPractices}
+                  onSelectExam={handleSelectPractice}
                   onSelectAll={handleSelectAll}
                   onToggleStatus={handleToggleStatus}
-                  onDelete={handleDeleteExam}
-                  onDuplicate={handleDuplicateExam}
+                  onDelete={handleDeletePractice}
+                  onDuplicate={handleDuplicatePractice}
                 />
               )}
             </>
@@ -379,16 +377,16 @@ const ExamManagement = () => {
         <Icon name="Plus" size={24} />
       </button>
 
-      {/* Create Exam Modal */}
+      {/* Create Practice Modal */}
       {isCreateModalOpen && (
         <CreateExamModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          onSubmit={handleCreateExam}
+          onSubmit={handleCreatePractice}
         />
       )}
     </div>
   );
 };
 
-export default ExamManagement;
+export default PracticeManagement;

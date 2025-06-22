@@ -4,22 +4,24 @@ import RoleBasedHeader from 'components/ui/RoleBasedHeader';
 import BreadcrumbNavigation from 'components/ui/BreadcrumbNavigation';
 import QuickActionMenu from 'components/ui/QuickActionMenu';
 import Icon from 'components/AppIcon';
+import { useAuth } from 'context/AuthContext';
 
 import AvailableExams from './components/AvailableExams';
 import ProgressOverview from './components/ProgressOverview';
 import RecentActivity from './components/RecentActivity';
-import AchievementBadges from './components/AchievementBadges';
+import StudentNameEditor from './components/StudentNameEditor';
 
 const StudentDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [notifications, setNotifications] = useState([]);
+  const { userProfile, updateLastAccess } = useAuth();
 
-  // Mock student data
+  // Mock student data enhanced with real profile data
   const studentData = {
-    id: 1,
-    name: "Ana García",
-    email: "ana.garcia@estudiante.com",
-    grade: "10º Grado",
+    id: userProfile?.id || 1,
+    name: userProfile?.full_name || "Estudiante",
+    email: userProfile?.email || "estudiante@ejemplo.com",
+    grade: userProfile?.grade_level || "Sin asignar",
     overallAverage: 87.5,
     completedExams: 12,
     totalExams: 15,
@@ -31,7 +33,7 @@ const StudentDashboard = () => {
     {
       id: 1,
       type: "new_exam",
-      title: "Nuevo Examen Disponible",
+      title: "Nueva Práctica Disponible",
       message: "Álgebra Lineal - Sistemas de Ecuaciones está disponible",
       timestamp: new Date(Date.now() - 3600000),
       isRead: false
@@ -40,7 +42,7 @@ const StudentDashboard = () => {
       id: 2,
       type: "deadline",
       title: "Fecha Límite Próxima",
-      message: "El examen de Geometría vence en 2 días",
+      message: "La práctica de Geometría vence en 2 días",
       timestamp: new Date(Date.now() - 7200000),
       isRead: false
     }
@@ -53,8 +55,13 @@ const StudentDashboard = () => {
 
     setNotifications(mockNotifications);
 
+    // Update last access when component mounts
+    if (updateLastAccess) {
+      updateLastAccess();
+    }
+
     return () => clearInterval(timer);
-  }, []);
+  }, [updateLastAccess]);
 
   const getGreeting = () => {
     const hour = currentTime.getHours();
@@ -82,6 +89,11 @@ const StudentDashboard = () => {
     );
   };
 
+  const handleNameUpdate = (newName) => {
+    // This will be handled by the AuthContext and will update userProfile automatically
+    console.log('Name updated to:', newName);
+  };
+
   const unreadNotifications = notifications.filter(n => !n.isRead);
 
   return (
@@ -97,10 +109,16 @@ const StudentDashboard = () => {
             <div className="bg-gradient-to-r from-primary to-primary-700 rounded-lg p-6 text-white">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-4 sm:mb-0">
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-2">
-                    {getGreeting()}, {studentData.name.split(' ')[0]}
-                  </h1>
-                  <p className="text-primary-100 text-sm sm:text-base">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h1 className="text-xl sm:text-2xl font-medium">
+                      {getGreeting()},
+                    </h1>
+                  </div>
+                  <StudentNameEditor 
+                    currentName={studentData.name}
+                    onNameUpdate={handleNameUpdate}
+                  />
+                  <p className="text-primary-100 text-sm sm:text-base mt-2">
                     {formatDate(currentTime)}
                   </p>
                   <p className="text-primary-100 text-sm mt-1">
@@ -159,7 +177,7 @@ const StudentDashboard = () => {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Available Exams */}
+            {/* Left Column - Available Practices */}
             <div className="lg:col-span-2">
               <AvailableExams />
             </div>
@@ -167,7 +185,6 @@ const StudentDashboard = () => {
             {/* Right Column - Progress & Stats */}
             <div className="space-y-8">
               <ProgressOverview studentData={studentData} />
-              <AchievementBadges />
             </div>
           </div>
 

@@ -6,100 +6,109 @@ const RecentActivity = () => {
   const recentActivities = [
     {
       id: 1,
-      type: 'exam_completed',
-      title: 'Examen completado',
-      description: 'Cálculo Diferencial - Límites',
+      type: 'practice_completed',
+      title: 'Práctica Completada',
+      description: 'Álgebra Básica - Ecuaciones Lineales',
       score: 92,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
       icon: 'CheckCircle',
-      color: 'text-success',
-      bgColor: 'bg-success-50'
+      iconColor: 'text-success',
+      bgColor: 'bg-success-50',
+      borderColor: 'border-success-200'
     },
     {
       id: 2,
-      type: 'exam_started',
-      title: 'Examen iniciado',
+      type: 'practice_started',
+      title: 'Práctica Iniciada',
       description: 'Geometría - Teorema de Pitágoras',
-      progress: 60,
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
+      progress: 45,
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
       icon: 'Play',
-      color: 'text-warning-600',
-      bgColor: 'bg-warning-50'
+      iconColor: 'text-primary',
+      bgColor: 'bg-primary-50',
+      borderColor: 'border-primary-200'
     },
     {
       id: 3,
-      type: 'achievement',
-      title: 'Logro desbloqueado',
-      description: 'Maestro del Álgebra - 5 exámenes consecutivos con +90%',
-      timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      icon: 'Award',
-      color: 'text-primary',
-      bgColor: 'bg-primary-50'
+      type: 'milestone_reached',
+      title: 'Meta Alcanzada',
+      description: 'Has completado 10 prácticas este mes',
+      timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+      icon: 'Trophy',
+      iconColor: 'text-warning',
+      bgColor: 'bg-warning-50',
+      borderColor: 'border-warning-200'
     },
     {
       id: 4,
-      type: 'exam_assigned',
-      title: 'Nuevo examen disponible',
+      type: 'practice_assigned',
+      title: 'Nueva Práctica Asignada',
       description: 'Estadística - Probabilidad Básica',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      icon: 'FileText',
-      color: 'text-secondary-600',
-      bgColor: 'bg-secondary-100'
+      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      icon: 'BookOpen',
+      iconColor: 'text-accent',
+      bgColor: 'bg-accent-50',
+      borderColor: 'border-accent-200'
     },
     {
       id: 5,
-      type: 'study_streak',
-      title: 'Racha de estudio',
-      description: '5 días consecutivos de actividad',
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      icon: 'Flame',
-      color: 'text-warning',
-      bgColor: 'bg-warning-50'
+      type: 'points_earned',
+      title: 'Puntos Ganados',
+      description: 'Has ganado 150 puntos por tu excelente desempeño',
+      points: 150,
+      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+      icon: 'Star',
+      iconColor: 'text-secondary-600',
+      bgColor: 'bg-secondary-100',
+      borderColor: 'border-secondary-200'
     }
   ];
 
-  const formatTimeAgo = (timestamp) => {
+  const formatTimestamp = (date) => {
     const now = new Date();
-    const diffInSeconds = Math.floor((now - timestamp) / 1000);
-    
-    if (diffInSeconds < 60) return 'Hace un momento';
-    if (diffInSeconds < 3600) return `Hace ${Math.floor(diffInSeconds / 60)} min`;
-    if (diffInSeconds < 86400) return `Hace ${Math.floor(diffInSeconds / 3600)} h`;
-    if (diffInSeconds < 604800) return `Hace ${Math.floor(diffInSeconds / 86400)} días`;
-    return timestamp.toLocaleDateString('es-ES');
+    const diffTime = now - date;
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 0) {
+      return `hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+    } else if (diffHours > 0) {
+      return `hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+    } else {
+      return 'hace unos minutos';
+    }
   };
 
   const getActivityDetails = (activity) => {
     switch (activity.type) {
-      case 'exam_completed':
+      case 'practice_completed':
         return (
-          <div className="flex items-center space-x-2 mt-1">
-            <Icon name="Star" size={14} className="text-warning" />
-            <span className="text-sm font-medium text-success">
-              Calificación: {activity.score}%
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-success font-medium">
+              Puntuación: {activity.score}%
             </span>
           </div>
         );
-      case 'exam_started':
+      case 'practice_started':
         return (
-          <div className="flex items-center space-x-2 mt-1">
+          <div className="flex items-center space-x-2">
             <div className="w-16 bg-secondary-200 rounded-full h-1.5">
               <div
-                className="bg-warning h-1.5 rounded-full transition-all duration-300 ease-smooth"
+                className="bg-primary h-1.5 rounded-full transition-all duration-300"
                 style={{ width: `${activity.progress}%` }}
               ></div>
             </div>
             <span className="text-xs text-text-secondary">
-              {activity.progress}% completado
+              {activity.progress}%
             </span>
           </div>
         );
-      case 'exam_assigned':
+      case 'points_earned':
         return (
-          <div className="mt-1">
-            <span className="text-xs text-text-secondary">
-              Vence: {activity.dueDate.toLocaleDateString('es-ES')}
+          <div className="flex items-center space-x-1">
+            <Icon name="Coins" size={14} className="text-warning" />
+            <span className="text-sm text-warning-600 font-medium">
+              +{activity.points} puntos
             </span>
           </div>
         );
@@ -110,87 +119,73 @@ const RecentActivity = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-semibold text-text-primary">Actividad Reciente</h3>
-        <button className="text-sm text-primary hover:text-primary-700 font-medium transition-colors duration-200 ease-in-out">
-          Ver todo
-        </button>
-      </div>
+      <h3 className="text-xl font-semibold text-text-primary">
+        Actividad Reciente
+      </h3>
 
       <div className="bg-surface rounded-lg border border-border">
         <div className="divide-y divide-border">
           {recentActivities.map((activity, index) => (
-            <div key={activity.id} className="p-4 hover:bg-secondary-50 transition-colors duration-200 ease-in-out">
+            <div
+              key={activity.id}
+              className="p-4 hover:bg-secondary-50 transition-colors duration-200 ease-in-out"
+            >
               <div className="flex items-start space-x-4">
-                <div className={`p-2 rounded-full ${activity.bgColor}`}>
-                  <Icon name={activity.icon} size={16} className={activity.color} />
+                {/* Activity Icon */}
+                <div className={`
+                  p-2 rounded-full ${activity.bgColor} border ${activity.borderColor}
+                  flex-shrink-0
+                `}>
+                  <Icon 
+                    name={activity.icon} 
+                    size={16} 
+                    className={activity.iconColor}
+                  />
                 </div>
-                
+
+                {/* Activity Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-text-primary truncate">
-                      {activity.title}
-                    </h4>
-                    <span className="text-xs text-text-secondary whitespace-nowrap ml-2">
-                      {formatTimeAgo(activity.timestamp)}
-                    </span>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-text-primary mb-1">
+                        {activity.title}
+                      </h4>
+                      <p className="text-sm text-text-secondary mb-2 line-clamp-2">
+                        {activity.description}
+                      </p>
+                      {getActivityDetails(activity)}
+                    </div>
+                    <div className="ml-4 text-xs text-text-secondary flex-shrink-0">
+                      {formatTimestamp(activity.timestamp)}
+                    </div>
                   </div>
-                  
-                  <p className="text-sm text-text-secondary mt-1 truncate">
-                    {activity.description}
-                  </p>
-                  
-                  {getActivityDetails(activity)}
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Activity Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-surface rounded-lg border border-border p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Icon name="Calendar" size={16} className="text-primary" />
-            <span className="text-sm text-text-secondary">Esta Semana</span>
-          </div>
-          <div className="text-2xl font-bold text-text-primary">3</div>
-          <div className="text-xs text-text-secondary">Exámenes completados</div>
-        </div>
-        
-        <div className="bg-surface rounded-lg border border-border p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Icon name="Trophy" size={16} className="text-warning" />
-            <span className="text-sm text-text-secondary">Logros</span>
-          </div>
-          <div className="text-2xl font-bold text-text-primary">2</div>
-          <div className="text-xs text-text-secondary">Nuevos este mes</div>
-        </div>
-        
-        <div className="bg-surface rounded-lg border border-border p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Icon name="Flame" size={16} className="text-error" />
-            <span className="text-sm text-text-secondary">Racha Actual</span>
-          </div>
-          <div className="text-2xl font-bold text-text-primary">5</div>
-          <div className="text-xs text-text-secondary">Días consecutivos</div>
+        {/* View All Activities Link */}
+        <div className="p-4 bg-secondary-50 border-t border-border">
+          <button className="text-sm text-primary hover:text-primary-700 font-medium transition-colors duration-200 ease-in-out w-full text-center">
+            Ver toda la actividad
+          </button>
         </div>
       </div>
 
-      {/* Motivational Message */}
-      <div className="bg-gradient-to-r from-primary-50 to-accent-50 rounded-lg border border-primary-200 p-4">
-        <div className="flex items-start space-x-3">
-          <Icon name="Lightbulb" size={20} className="text-primary mt-0.5" />
-          <div>
-            <h4 className="text-sm font-medium text-primary mb-1">
-              ¡Sigue así!
-            </h4>
-            <p className="text-sm text-text-secondary">
-              Has completado 3 exámenes esta semana con un promedio del 89%. 
-              Mantén el ritmo para alcanzar tu objetivo mensual.
-            </p>
-          </div>
+      {/* Activity Summary Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-surface rounded-lg border border-border p-4 text-center">
+          <div className="text-2xl font-bold text-primary mb-1">5</div>
+          <div className="text-xs text-text-secondary">Prácticas esta semana</div>
+        </div>
+        <div className="bg-surface rounded-lg border border-border p-4 text-center">
+          <div className="text-2xl font-bold text-success mb-1">87%</div>
+          <div className="text-xs text-text-secondary">Promedio semanal</div>
+        </div>
+        <div className="bg-surface rounded-lg border border-border p-4 text-center">
+          <div className="text-2xl font-bold text-warning mb-1">350</div>
+          <div className="text-xs text-text-secondary">Puntos ganados</div>
         </div>
       </div>
     </div>

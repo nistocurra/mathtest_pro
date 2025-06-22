@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import RoleBasedHeader from 'components/ui/RoleBasedHeader';
 import BreadcrumbNavigation from 'components/ui/BreadcrumbNavigation';
+import { useAuth } from 'context/AuthContext';
+import practiceService from 'services/practiceService';
+import studentService from 'services/studentService';
 
 import Icon from 'components/AppIcon';
 import RecentActivity from './components/RecentActivity';
@@ -9,137 +12,15 @@ import MetricsCard from './components/MetricsCard';
 
 const TeacherPanel = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
-
-  // Mock data for teacher dashboard
-  const teacherData = {
-    name: "Prof. María González",
-    email: "maria.gonzalez@mathtest.edu"
-  };
-
-  const dashboardMetrics = [
-    {
-      id: 1,
-      title: "Exámenes Activos",
-      value: 8,
-      icon: "FileText",
-      color: "primary",
-      change: "+2 esta semana",
-      changeType: "positive"
-    },
-    {
-      id: 2,
-      title: "Estudiantes Registrados",
-      value: 142,
-      icon: "Users",
-      color: "accent",
-      change: "+5 este mes",
-      changeType: "positive"
-    },
-    {
-      id: 3,
-      title: "Exámenes Completados Hoy",
-      value: 23,
-      icon: "CheckCircle",
-      color: "success",
-      change: "↑ 15% vs ayer",
-      changeType: "positive"
-    },
-    {
-      id: 4,
-      title: "Promedio General",
-      value: "7.8",
-      icon: "TrendingUp",
-      color: "warning",
-      change: "↑ 0.3 este mes",
-      changeType: "positive",
-      suffix: "/10"
-    }
-  ];
-
-  const recentActivities = [
-    {
-      id: 1,
-      studentName: "Ana Martínez",
-      examTitle: "Álgebra Básica - Unidad 3",
-      score: 8.5,
-      maxScore: 10,
-      completedAt: new Date(Date.now() - 1800000), // 30 minutes ago
-      duration: "25 min",
-      status: "completed"
-    },
-    {
-      id: 2,
-      studentName: "Carlos Rodríguez",
-      examTitle: "Geometría - Teorema de Pitágoras",
-      score: 9.2,
-      maxScore: 10,
-      completedAt: new Date(Date.now() - 3600000), // 1 hour ago
-      duration: "18 min",
-      status: "completed"
-    },
-    {
-      id: 3,
-      studentName: "Lucía Fernández",
-      examTitle: "Cálculo Diferencial - Límites",
-      score: 7.1,
-      maxScore: 10,
-      completedAt: new Date(Date.now() - 5400000), // 1.5 hours ago
-      duration: "32 min",
-      status: "completed"
-    },
-    {
-      id: 4,
-      studentName: "Diego Morales",
-      examTitle: "Estadística - Probabilidad",
-      score: 6.8,
-      maxScore: 10,
-      completedAt: new Date(Date.now() - 7200000), // 2 hours ago
-      duration: "28 min",
-      status: "completed"
-    },
-    {
-      id: 5,
-      studentName: "Isabella Torres",
-      examTitle: "Álgebra Lineal - Matrices",
-      score: 9.5,
-      maxScore: 10,
-      completedAt: new Date(Date.now() - 10800000), // 3 hours ago
-      duration: "22 min",
-      status: "completed"
-    }
-  ];
-
-  const quickActions = [
-    {
-      title: "Crear Nuevo Examen",
-      description: "Diseña un examen desde cero con preguntas personalizadas",
-      icon: "Plus",
-      path: "/gesti-n-de-ex-menes",
-      color: "primary",
-      featured: true
-    },
-    {
-      title: "Subir Archivo de Examen",
-      description: "Importa exámenes desde archivos de texto estructurados",
-      icon: "Upload",
-      path: "/gesti-n-de-ex-menes",
-      color: "secondary"
-    },
-    {
-      title: "Gestionar Estudiantes",
-      description: "Administra cuentas y permisos de estudiantes",
-      icon: "Users",
-      path: "/gesti-n-de-estudiantes",
-      color: "accent"
-    },
-    {
-      title: "Ver Todos los Resultados",
-      description: "Analiza el rendimiento detallado de todos los exámenes",
-      icon: "BarChart3",
-      path: "/panel-del-profesor",
-      color: "success"
-    }
-  ];
+  const [dashboardData, setDashboardData] = useState({
+    activePractices: 0,
+    totalStudents: 0,
+    completedToday: 0,
+    averageScore: 0
+  });
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { userProfile, updateLastAccess } = useAuth();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -148,6 +29,121 @@ const TeacherPanel = () => {
 
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        updateLastAccess();
+        
+        // Load practices and students in parallel
+        const [practices, students] = await Promise.all([
+          practiceService.getPractices(),
+          studentService.getStudents()
+        ]);
+
+        // Calculate metrics
+        const activePractices = practices.filter(p => p.is_active).length;
+        const totalStudents = students.length;
+        
+        // Get recent practice attempts
+        let allAttempts = [];
+        for (const practice of practices) {
+          try {
+            const attempts = await practiceService.getPracticeAttempts(practice.id);
+            allAttempts = [...allAttempts, ...attempts];
+          } catch (err) {
+            console.log('Error loading attempts for practice:', practice.id);
+          }
+        }
+
+        // Filter today's completed attempts
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const completedToday = allAttempts.filter(attempt => {
+          const completedDate = new Date(attempt.completed_at);
+          return completedDate >= today && attempt.status === 'completed';
+        }).length;
+
+        // Calculate average score
+        const completedAttempts = allAttempts.filter(a => a.status === 'completed');
+        const averageScore = completedAttempts.length > 0 ?
+          Math.round(completedAttempts.reduce((sum, a) => sum + (a.score || 0), 0) / completedAttempts.length * 10) / 10 :
+          0;
+
+        setDashboardData({
+          activePractices,
+          totalStudents,
+          completedToday,
+          averageScore
+        });
+
+        // Set recent activities (last 5 completed attempts)
+        const sortedAttempts = allAttempts
+          .filter(a => a.status === 'completed')
+          .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
+          .slice(0, 5)
+          .map(attempt => ({
+            id: attempt.id,
+            studentName: attempt.student?.full_name || attempt.student?.alias || 'Estudiante',
+            examTitle: attempt.practice?.title || 'Práctica',
+            score: attempt.score || 0,
+            maxScore: 100,
+            completedAt: new Date(attempt.completed_at),
+            duration: `${attempt.time_spent_minutes || 0} min`,
+            status: 'completed'
+          }));
+
+        setRecentActivities(sortedAttempts);
+      } catch (error) {
+        console.log('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [updateLastAccess]);
+
+  const dashboardMetrics = [
+    {
+      id: 1,
+      title: "Prácticas Activas",
+      value: dashboardData.activePractices,
+      icon: "FileText",
+      color: "primary",
+      change: "+2 esta semana",
+      changeType: "positive"
+    },
+    {
+      id: 2,
+      title: "Estudiantes Registrados",
+      value: dashboardData.totalStudents,
+      icon: "Users",
+      color: "accent",
+      change: "+5 este mes",
+      changeType: "positive"
+    },
+    {
+      id: 3,
+      title: "Prácticas Completadas Hoy",
+      value: dashboardData.completedToday,
+      icon: "CheckCircle",
+      color: "success",
+      change: "↑ 15% vs ayer",
+      changeType: "positive"
+    },
+    {
+      id: 4,
+      title: "Promedio General",
+      value: dashboardData.averageScore.toString(),
+      icon: "TrendingUp",
+      color: "warning",
+      change: "↑ 0.3 este mes",
+      changeType: "positive",
+      suffix: "/100"
+    }
+  ];
 
   const formatTime = (date) => {
     return date.toLocaleTimeString('es-ES', {
@@ -165,9 +161,27 @@ const TeacherPanel = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <RoleBasedHeader userRole="teacher" userName={userProfile?.full_name || 'Profesor'} />
+        <div className="pt-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center justify-center h-64">
+              <div className="flex items-center space-x-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <span className="text-text-secondary">Cargando panel del profesor...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <RoleBasedHeader userRole="teacher" userName={teacherData.name} />
+      <RoleBasedHeader userRole="teacher" userName={userProfile?.full_name || 'Profesor'} />
       
       <main className="pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -178,7 +192,7 @@ const TeacherPanel = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-text-primary mb-2">
-                  ¡Bienvenido, {teacherData.name.split(' ')[1]}!
+                  ¡Bienvenido, {userProfile?.full_name?.split(' ')[1] || 'Profesor'}!
                 </h1>
                 <p className="text-text-secondary">
                   {formatDate(currentTime)} • {formatTime(currentTime)}
@@ -190,7 +204,7 @@ const TeacherPanel = () => {
                   className="btn-primary inline-flex items-center space-x-2"
                 >
                   <Icon name="Plus" size={20} />
-                  <span>Crear Examen</span>
+                  <span>Crear Práctica</span>
                 </Link>
               </div>
             </div>
@@ -205,130 +219,81 @@ const TeacherPanel = () => {
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Quick Actions - Mobile: Full width, Desktop: 2 columns */}
-            <div className="lg:col-span-2">
-              <div className="card">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-text-primary">
-                    Acciones Rápidas
-                  </h2>
-                  <Icon name="Zap" size={20} className="text-primary" />
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {quickActions.map((action, index) => (
-                    <Link
-                      key={index}
-                      to={action.path}
-                      className={`
-                        group p-4 rounded-lg border transition-all duration-200 ease-in-out
-                        ${action.featured 
-                          ? 'bg-primary text-white border-primary hover:bg-primary-700' :'bg-surface border-border hover:border-primary hover:bg-primary-50'
-                        }
-                        hover:shadow-md hover:scale-105 active:scale-98
-                        focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
-                      `}
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className={`
-                          p-2 rounded-md transition-colors duration-200 ease-in-out
-                          ${action.featured 
-                            ? 'bg-white bg-opacity-20' :'bg-primary-100 group-hover:bg-primary'
-                          }
-                        `}>
-                          <Icon 
-                            name={action.icon} 
-                            size={20} 
-                            className={action.featured ? 'text-white' : 'text-primary group-hover:text-white'}
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className={`
-                            font-medium mb-1 truncate
-                            ${action.featured ? 'text-white' : 'text-text-primary'}
-                          `}>
-                            {action.title}
-                          </h3>
-                          <p className={`
-                            text-sm
-                            ${action.featured ? 'text-white text-opacity-90' : 'text-text-secondary'}
-                          `}>
-                            {action.description}
-                          </p>
-                        </div>
-                        <Icon 
-                          name="ArrowRight" 
-                          size={16} 
-                          className={`
-                            transition-transform duration-200 ease-in-out group-hover:translate-x-1
-                            ${action.featured ? 'text-white' : 'text-primary'}
-                          `}
-                        />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             {/* Recent Activity - Mobile: Full width, Desktop: 1 column */}
             <div className="lg:col-span-1">
               <RecentActivity activities={recentActivities} />
             </div>
-          </div>
 
-          {/* Additional Statistics Section */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Performance Overview */}
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-text-primary">
-                  Rendimiento Semanal
-                </h3>
-                <Icon name="TrendingUp" size={20} className="text-success" />
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-text-secondary">Exámenes completados</span>
-                  <span className="font-medium text-text-primary">156</span>
+            {/* Additional Statistics Section */}
+            <div className="lg:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Performance Overview */}
+                <div className="card">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-text-primary">
+                      Rendimiento Semanal
+                    </h3>
+                    <Icon name="TrendingUp" size={20} className="text-success" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-text-secondary">Prácticas completadas</span>
+                      <span className="font-medium text-text-primary">{dashboardData.completedToday * 7}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-text-secondary">Promedio de calificación</span>
+                      <span className="font-medium text-success">{dashboardData.averageScore}/100</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-text-secondary">Estudiantes activos</span>
+                      <span className="font-medium text-text-primary">{dashboardData.totalStudents}</span>
+                    </div>
+                    <div className="w-full bg-secondary-200 rounded-full h-2 mt-4">
+                      <div className="bg-success h-2 rounded-full" style={{ width: `${Math.min(dashboardData.averageScore, 100)}%` }}></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-text-secondary">Promedio de calificación</span>
-                  <span className="font-medium text-success">7.8/10</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-text-secondary">Tiempo promedio</span>
-                  <span className="font-medium text-text-primary">24 min</span>
-                </div>
-                <div className="w-full bg-secondary-200 rounded-full h-2 mt-4">
-                  <div className="bg-success h-2 rounded-full" style={{ width: '78%' }}></div>
-                </div>
-              </div>
-            </div>
 
-            {/* System Status */}
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-text-primary">
-                  Estado del Sistema
-                </h3>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-success rounded-full"></div>
-                  <span className="text-sm text-success font-medium">Operativo</span>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-text-secondary">Servidor</span>
-                  <span className="text-success font-medium">En línea</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-text-secondary">Base de datos</span>
-                  <span className="text-success font-medium">Conectada</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-text-secondary">Última actualización</span>
-                  <span className="text-text-secondary text-sm">Hace 2 min</span>
+                {/* Quick Links */}
+                <div className="card">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-text-primary">
+                      Acceso Rápido
+                    </h3>
+                    <Icon name="Zap" size={20} className="text-primary" />
+                  </div>
+                  <div className="space-y-3">
+                    <Link
+                      to="/gesti-n-de-ex-menes"
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-primary-50 transition-colors duration-200"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon name="FileText" size={16} className="text-primary" />
+                        <span className="text-text-primary">Gestión de Prácticas</span>
+                      </div>
+                      <Icon name="ArrowRight" size={16} className="text-text-secondary" />
+                    </Link>
+                    <Link
+                      to="/gesti-n-de-estudiantes"
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-primary-50 transition-colors duration-200"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon name="Users" size={16} className="text-primary" />
+                        <span className="text-text-primary">Gestión de Estudiantes</span>
+                      </div>
+                      <Icon name="ArrowRight" size={16} className="text-text-secondary" />
+                    </Link>
+                    <Link
+                      to="/gesti-n-de-grupos"
+                      className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-primary-50 transition-colors duration-200"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon name="UserPlus" size={16} className="text-primary" />
+                        <span className="text-text-primary">Gestión de Grupos</span>
+                      </div>
+                      <Icon name="ArrowRight" size={16} className="text-text-secondary" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>

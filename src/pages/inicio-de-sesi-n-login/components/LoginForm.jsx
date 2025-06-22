@@ -18,9 +18,9 @@ const LoginForm = ({ onSubmit, isLoading, error }) => {
     const errors = {};
 
     if (!formData.email.trim()) {
-      errors.email = 'El email es obligatorio';
+      errors.email = 'El alias es obligatorio';
     } else if (!validateEmail(formData.email)) {
-      errors.email = 'Ingresa un email válido';
+      errors.email = 'Ingresa un alias válido';
     }
 
     if (!formData.password.trim()) {
@@ -73,10 +73,10 @@ const LoginForm = ({ onSubmit, isLoading, error }) => {
         </div>
       )}
 
-      {/* Email Field */}
+      {/* Alias Field */}
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-text-primary mb-2">
-          Email
+          Alias
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

@@ -8,7 +8,35 @@
     <meta name="description" content="Web site created using create-react-app" />
     <link rel="icon" href="/favicon.ico" />
     <link rel="manifest" href="/manifest.json" />
-<script type="module" src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Fmathtestp1581back.builtwithrocket.new&_v=0.1.2"></script>
+    
+    <!-- Preemptively handle ethereum provider conflicts -->
+    <script>
+      // Early conflict resolution for ethereum providers
+      (function() {
+        try {
+          // Store reference to any existing ethereum object
+          const existingEthereum = window.ethereum;
+          
+          // Define a safe ethereum property before extensions can inject
+          if (!window.ethereum || typeof window.ethereum === 'undefined') {
+            Object.defineProperty(window, 'ethereum', {
+              get: function() {
+                // Return the most recently set ethereum provider
+                return window._ethereumProvider || existingEthereum;
+              },
+              set: function(value) {
+                window._ethereumProvider = value;
+              },
+              configurable: true,
+              enumerable: true
+            });
+          }
+        } catch (error) {
+          console.warn('Could not set up ethereum conflict prevention:', error);
+        }
+      })();
+    </script>
+<script type="module" src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Fmathtestp1581back.builtwithrocket.new&_be=https%3A%2F%2Fapplication.rocket.new&_v=0.1.5"></script>
 </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
